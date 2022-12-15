@@ -1,9 +1,29 @@
 const fs = require('fs');
 
+const input = './input.txt';
+const sampleInput = './inputSample.txt';
+const runSample = false;
+
+const air = ' ';
+const rock = '#';
+const sand = '.';
+const showSimulation = false;
+const simSpeed = 75; // Lower than 75 causes the screen to flicker
+
+const displayGrid = async (grid, runs) => {
+	await new Promise((resolve) =>
+		setTimeout(() => {
+			grid = grid.map((row) => row.map((char) => (char === rock ? '\x1b[31m' + rock + '\x1b[37m' : char)));
+			console.clear();
+			console.log(grid.map((row) => row.join('')).join('\n'));
+			resolve(console.log('Sand on screen: ' + '\x1b[32m' + runs + '\x1b[37m'));
+		}, simSpeed)
+	);
+};
+
 const getInput = async () => {
 	try {
-		const data = fs.readFileSync('./input.txt', 'utf8');
-		// const data = fs.readFileSync('./inputSample.txt', 'utf8');
+		const data = fs.readFileSync(runSample ? sampleInput : input, 'utf8');
 		return data.split('\n').map((line) => line.split(' -> ').map((cord) => cord.split(',').map((num) => parseInt(num))));
 	} catch (error) {
 		console.log(error);
@@ -37,7 +57,7 @@ const buildGrid = (inputData, sandSource) => {
 		});
 	});
 
-	let grid = Array.from(Array(maxY + 1), () => new Array(maxX - minX + 1).fill('.'));
+	let grid = Array.from(Array(maxY + 1), () => new Array(maxX - minX + 1).fill(air));
 	grid[sandSource[1]][convertXToGrid(sandSource[0], minX)] = '+';
 
 	inputData.forEach((line) => {
@@ -50,14 +70,14 @@ const buildGrid = (inputData, sandSource) => {
 			if (x === x2) {
 				let vals = [y, y2].sort((a, b) => a - b);
 				for (let i = vals[0]; i <= vals[1]; i++) {
-					grid[i][convertXToGrid(x, minX)] = '#';
+					grid[i][convertXToGrid(x, minX)] = rock;
 				}
 			}
 
 			if (y === y2) {
 				let vals = [x, x2].sort((a, b) => a - b);
 				for (let i = vals[0]; i <= vals[1]; i++) {
-					grid[y][convertXToGrid(i, minX)] = '#';
+					grid[y][convertXToGrid(i, minX)] = rock;
 				}
 			}
 		}
@@ -89,7 +109,12 @@ const simulateSandFlow = async (grid, sandSource, bounds, runs = 1) => {
 		return { finalGrid: grid, runs };
 	}
 
-	grid[sandFinalPosition[1]][sandFinalPosition[0]] = 'O';
+	grid[sandFinalPosition[1]][sandFinalPosition[0]] = sand;
+
+	if (showSimulation) {
+		await displayGrid(grid, runs);
+	}
+
 	return await simulateSandFlow(grid, sandSource, bounds, runs + 1);
 };
 
@@ -104,7 +129,7 @@ const calcSandFinalPosition = async (grid, sandPosition) => {
 	let row = grid[sandY];
 	let tile = row[sandX];
 
-	if (tile === '#') {
+	if (tile === rock) {
 		// Sand hits rock - Blocked
 		// Check if sand can flow left or right
 		let moveSand = sandToMoveWhenBlocked(row, sandX);
@@ -118,11 +143,11 @@ const calcSandFinalPosition = async (grid, sandPosition) => {
 			}
 			return await calcSandFinalPosition(grid, [sandX, sandY]);
 		}
-	} else if (tile === '.') {
+	} else if (tile === air) {
 		// Sand hits empty space - Flow down
 		sandY++;
 		return await calcSandFinalPosition(grid, [sandX, sandY]);
-	} else if (tile === 'O') {
+	} else if (tile === sand) {
 		// Sand hits other sand - Blocked
 		// Check if sand can flow left or right
 		let moveSand = sandToMoveWhenBlocked(row, sandX);
@@ -140,9 +165,9 @@ const calcSandFinalPosition = async (grid, sandPosition) => {
 };
 
 const sandToMoveWhenBlocked = (row, sandX) => {
-	if (!row[sandX - 1] || row[sandX - 1] === '.') {
+	if (!row[sandX - 1] || row[sandX - 1] === air) {
 		return -1;
-	} else if (!row[sandX + 1] || row[sandX + 1] === '.') {
+	} else if (!row[sandX + 1] || row[sandX + 1] === air) {
 		return 1;
 	} else {
 		return 0;
@@ -156,7 +181,8 @@ const main = async () => {
 
 		let { grid, minX, minY, maxX, maxY } = buildGrid(inputData, sandSource);
 		let { finalGrid, runs } = await simulateSandFlow(grid, sandSource, { minX, minY, maxX, maxY });
-		console.log(runs - 1);
+		displayGrid(finalGrid, runs);
+		console.log(`Sand on screen: runs: ${runs - 1}`);
 	} catch (error) {
 		console.error(error);
 	}
