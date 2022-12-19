@@ -1,8 +1,9 @@
 const fs = require('fs');
+const runSample = true;
 const data = fs.readFileSync(runSample ? './inputSample.txt' : './input.txt', 'utf8');
 
-const runSample = true;
-
-// Puzzle Start
+/*
+ * Puzzle Start
+ */
 
 let inputData = data;
