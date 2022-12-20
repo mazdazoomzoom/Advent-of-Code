@@ -51,7 +51,7 @@ const createBlueprints = (data) => {
 	return blueprints;
 };
 
-const getBestGeodes = (blueprint, time) => {
+const getBestGeodes = (blueprint, id, time) => {
 	const cOreRobot = blueprint['ore'].costs['ore']; // Cost of ore robot (ore)
 	const cClayRobot = blueprint['clay'].costs['ore']; // Cost of clay robot (ore)
 	const cObsRobotOre = blueprint['obsidian'].costs['ore']; // Cost of obsidian robot (ore)
@@ -74,16 +74,17 @@ const getBestGeodes = (blueprint, time) => {
 		bestGeodeCount = Math.max(bestGeodeCount, geodes);
 		if (remTime == 0) continue;
 
-		let oreCount = remTime * maxOreSpend - rcOre * (remTime - 1);
-		let clayCount = remTime * cObsRobotClay - rcClay * (remTime - 1);
-		let obsCount = remTime * cGeoRobotObs - rcObs * (remTime - 1);
-
 		if (rcOre >= maxOreSpend) rcOre = maxOreSpend;
 		if (rcClay >= cObsRobotClay) rcClay = cObsRobotClay;
 		if (rcObs >= cGeoRobotObs) rcObs = cGeoRobotObs;
-		if (ore >= oreCount) ore = oreCount;
-		if (clay >= clayCount) clay = clayCount;
-		if (obsidian >= obsCount) obsidian = obsCount;
+
+		let oreCountNeeded = remTime * maxOreSpend - rcOre * (remTime - 1);
+		let clayCountNeeded = remTime * cObsRobotClay - rcClay * (remTime - 1);
+		let obsCountNeeded = remTime * cGeoRobotObs - rcObs * (remTime - 1);
+
+		if (ore >= oreCountNeeded) ore = oreCountNeeded;
+		if (clay >= clayCountNeeded) clay = clayCountNeeded;
+		if (obsidian >= obsCountNeeded) obsidian = obsCountNeeded;
 
 		state = [ore, clay, obsidian, geodes, rcOre, rcClay, rcObs, rcGeo, remTime];
 		let key = state.join(',');
@@ -91,7 +92,7 @@ const getBestGeodes = (blueprint, time) => {
 		seen.add(key);
 
 		if (seen.size % 10000 == 0) {
-			console.log(`Time: ${remTime}, Best: ${bestGeodeCount}, Seen: ${seen.size / 10000}0k, Queue: ${queue.length}`);
+			console.log(`Blueprint ID: ${id}; Time: ${time - remTime}, Best: ${bestGeodeCount}, Seen: ${seen.size / 10000}0k, Queue: ${queue.length}`);
 		}
 
 		ore += rcOre;
@@ -101,6 +102,7 @@ const getBestGeodes = (blueprint, time) => {
 		remTime--;
 
 		queue.push([ore, clay, obsidian, geodes, rcOre, rcClay, rcObs, rcGeo, remTime]);
+		// if (rcOre >= maxOreSpend && rcClay >= cObsRobotClay && rcObs >= cGeoRobotObs) continue;
 
 		// If we have enough ore to build a robot, build it unless we have robots for resource type
 		if (ore >= cOreRobot) {
@@ -127,8 +129,7 @@ let result = 0;
 const blueprints = createBlueprints(data);
 for (let blueprint in blueprints) {
 	blueprint = parseInt(blueprint);
-	let bestGeoCount = getBestGeodes(blueprints[blueprint], time);
-	result += bestGeoCount * blueprint;
+	result += getBestGeodes(blueprints[blueprint], blueprint, time) * blueprint;
 }
 
-console.log(`Result: ${result}`);
+console.log(`Blueprint Results: ${blueprintResults}`);
